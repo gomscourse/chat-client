@@ -3,6 +3,7 @@ package cmd
 import (
 	"chat-cli/internal/config"
 	"chat-cli/internal/lib/cli"
+	"chat-cli/internal/storage"
 	"context"
 	"fmt"
 	descAuth "github.com/gomscourse/auth/pkg/auth_v1"
@@ -24,7 +25,7 @@ func (p *Printer) Warning(msg string, a ...any) {
 // authCmd represents the auth command
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "Log in chat app",
+	Short: "Login to the app",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		printer := &Printer{}
@@ -51,15 +52,18 @@ var authCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to get refresh token: %v", err)
 		}
-
 		refreshToken := loginRes.GetRefreshToken()
+
+		st := storage.Load()
+		st.SetRefreshToken(username, refreshToken)
+
 		atPayload := &descAuth.GetAccessTokenRequest{RefreshToken: refreshToken}
 		atRes, err := authClient.GetAccessToken(ctx, atPayload)
 		if err != nil {
 			log.Fatalf("failed to get access token: %v", err)
 		}
-		// TODO: сохранить токен в переменные среды или файл
-		fmt.Println(atRes.GetAccessToken())
+		st.SetAccessToken(username, atRes.GetAccessToken())
+		st.Flush()
 	},
 }
 

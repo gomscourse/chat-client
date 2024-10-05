@@ -97,18 +97,22 @@ func connectChat(
 			return
 		}
 
-		author := message.GetAuthor()
-		if author == st.GetUsername() {
-			author = "you"
-		}
-
-		fmt.Printf(
-			"[%v] - [from: %s]: %s\n",
-			message.GetCreated().AsTime().Format(time.RFC3339),
-			author,
-			message.GetContent(),
-		)
+		printMessage(message, st.GetUsername())
 	}
+}
+
+func printMessage(message *descChat.ChatMessage, username string) {
+	author := message.GetAuthor()
+	if author == username {
+		author = "you"
+	}
+
+	fmt.Printf(
+		"[%v] - [from: %s]: %s\n",
+		message.GetCreated().AsTime().Format(time.RFC3339),
+		author,
+		message.GetContent(),
+	)
 }
 
 func sendMessage(ctx context.Context, client descChat.ChatV1Client, chatID int64) func(msg string) {

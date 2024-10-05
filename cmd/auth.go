@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"chat-cli/internal/config"
+	"chat-cli/internal/input_validators"
 	"chat-cli/internal/lib/cli"
 	"chat-cli/internal/storage"
 	"context"
@@ -29,7 +30,7 @@ var authCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		printer := &Printer{}
-		username := cli.GetUserInput("Username: ", printer)
+		username := cli.GetUserInput("Username: ", printer, input_validators.NotEmpty)
 		password, err := cli.GetSensitiveUserInput("Password", printer)
 		if err != nil {
 			log.Fatalf(fmt.Sprintf("Failed to read password: %s", err.Error()))

@@ -14,15 +14,15 @@ type Print interface {
 }
 
 // GetUserInput gets input from user terminal with retrying if input is empty.
-func GetUserInput(prompt string, prt Print) string {
+func GetUserInput(prompt string, prt Print, inputValidator func(input string) (bool, string)) string {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		prt.Info(prompt)
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 
-		if input == "" {
-			prt.Warning("value can't be empty")
+		if ok, warn := inputValidator(input); !ok {
+			prt.Warning(warn)
 		} else {
 			return input
 		}

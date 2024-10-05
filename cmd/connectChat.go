@@ -2,17 +2,20 @@ package cmd
 
 import (
 	"chat-cli/internal/config"
+	"chat-cli/internal/input_validators"
 	"chat-cli/internal/lib/cli"
 	"chat-cli/internal/storage"
 	"context"
 	"fmt"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"io"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -26,11 +29,26 @@ var connectChatCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to get chat ID: %s", err)
 		}
+		st := storage.Load()
+		md := metadata.MD{
+			"authorization": []string{st.GetAuthHeader()},
+		}
+
+		ctx := context.Background()
+		ctx = metadata.NewOutgoingContext(ctx, md)
+
+		client, closFn, err := getChatClient()
+		if err != nil {
+			log.Fatalf("unable to connect to chat server")
+		}
+
+		defer closFn()
 
 		readyCh := make(chan struct{})
-		go connectChat(chatID, readyCh)
+		go connectChat(ctx, client, chatID, st, readyCh)
 		<-readyCh
-		cli.InfinityInput(sendMessage, "cmd: exit")
+		showMessages()
+		cli.InfinityInput(sendMessage(ctx, client, chatID), "cmd: exit")
 	},
 }
 
@@ -49,22 +67,13 @@ func init() {
 	// connectChatCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func connectChat(chatID int64, readyCh chan<- struct{}) {
-	st := storage.Load()
-	md := metadata.MD{
-		"authorization": []string{st.GetAuthHeader()},
-	}
-	conn, err := grpc.Dial(config.ChatServiceAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Printf("failed to connect to server: %s\n", err)
-		return
-	}
-	defer conn.Close()
-
-	ctx := context.Background()
-	client := descChat.NewChatV1Client(conn)
-
-	ctx = metadata.NewOutgoingContext(ctx, md)
+func connectChat(
+	ctx context.Context,
+	client descChat.ChatV1Client,
+	chatID int64,
+	st *storage.Storage,
+	readyCh chan<- struct{},
+) {
 	stream, err := client.ConnectChat(
 		ctx, &descChat.ConnectChatRequest{
 			ChatId: chatID,
@@ -102,15 +111,45 @@ func connectChat(chatID int64, readyCh chan<- struct{}) {
 	}
 }
 
-func sendMessage(msg string) {
-	switch msg {
-	case "cmd: some":
-		fmt.Println("cmd: some")
-	default:
-		fmt.Print("\033[1A")
-		fmt.Print("\033[K")
+func sendMessage(ctx context.Context, client descChat.ChatV1Client, chatID int64) func(msg string) {
+	return func(msg string) {
+		switch msg {
+		case "cmd: some":
+			fmt.Println("cmd: some")
+		default:
+			fmt.Print("\033[1A")
+			fmt.Print("\033[K")
 
-		//TODO: отправка сообщения
-		fmt.Println(fmt.Sprintf("from you: %s", msg))
+			_, err := client.SendMessage(
+				ctx, &descChat.SendMessageRequest{
+					ChatID: chatID,
+					Text:   msg,
+				},
+			)
+
+			if err != nil {
+				fmt.Printf("failed to send message: %s\n", err)
+			}
+		}
 	}
+}
+
+func getChatClient() (descChat.ChatV1Client, func(), error) {
+	conn, err := grpc.Dial(config.ChatServiceAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, func() {}, errors.Wrap(err, "failed to connect to server")
+	}
+
+	return descChat.NewChatV1Client(conn), func() { conn.Close() }, nil
+}
+
+func showMessages() {
+	count := cli.GetUserInput(
+		"How many last messages from this chat you want to load?",
+		&Printer{},
+		input_validators.IsInt,
+	)
+	countInt, _ := strconv.Atoi(count)
+	//TODO: загрузить сообщения
+	fmt.Printf("shown %d messages", countInt)
 }

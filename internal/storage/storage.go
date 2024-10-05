@@ -10,8 +10,9 @@ import (
 const chatStoragePath = "chat-storage.json"
 
 type Storage struct {
-	AccessTokens  map[string]string `json:"access_tokens"`
-	RefreshTokens map[string]string `json:"refresh_tokens"`
+	Username     string
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func Load() *Storage {
@@ -19,8 +20,9 @@ func Load() *Storage {
 	data, err := os.ReadFile(chatStoragePath)
 	if err != nil && os.IsNotExist(err) {
 		storage = &Storage{
-			AccessTokens:  make(map[string]string),
-			RefreshTokens: make(map[string]string),
+			Username:     "",
+			AccessToken:  "",
+			RefreshToken: "",
 		}
 
 		storage.Flush()
@@ -30,7 +32,7 @@ func Load() *Storage {
 		log.Fatalf("failed to init storage: %s", err)
 	}
 
-	err = json.Unmarshal(data, storage)
+	err = json.Unmarshal(data, &storage)
 	if err != nil {
 		log.Fatalf("failed to load storage: %s", err)
 	}
@@ -38,20 +40,36 @@ func Load() *Storage {
 	return storage
 }
 
-func (s *Storage) SetRefreshToken(username, token string) {
-	s.RefreshTokens[username] = token
+func (s *Storage) SetRefreshToken(token string) {
+	s.RefreshToken = token
 }
 
-func (s *Storage) GetRefreshToken(username string) string {
-	return s.RefreshTokens[username]
+func (s *Storage) GetRefreshToken() string {
+	return s.RefreshToken
 }
 
-func (s *Storage) SetAccessToken(username, token string) {
-	s.AccessTokens[username] = token
+func (s *Storage) SetAccessToken(token string) {
+	s.AccessToken = token
 }
 
-func (s *Storage) GetAccessToken(username string) string {
-	return s.AccessTokens[username]
+func (s *Storage) GetAccessToken() string {
+	return s.AccessToken
+}
+
+func (s *Storage) GetAuthHeader() string {
+	token := s.GetAccessToken()
+	if token == "" {
+		log.Fatalf("you need to log in first")
+	}
+	return fmt.Sprintf("Bearer %s", token)
+}
+
+func (s *Storage) SetUsername(username string) {
+	s.Username = username
+}
+
+func (s *Storage) GetUsername() string {
+	return s.Username
 }
 
 func (s *Storage) Flush() {
@@ -64,8 +82,4 @@ func (s *Storage) Flush() {
 	if err != nil {
 		log.Fatalf("failed to write to storage file: %s", err)
 	}
-}
-
-func (s *Storage) GetAuthHeader(username string) string {
-	return fmt.Sprintf("Bearer %s", s.GetAccessToken(username))
 }

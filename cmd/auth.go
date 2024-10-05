@@ -15,10 +15,10 @@ import (
 
 type Printer struct{}
 
-func (p *Printer) Info(msg string, a ...any) {
+func (p *Printer) Info(msg string) {
 	fmt.Println(msg)
 }
-func (p *Printer) Warning(msg string, a ...any) {
+func (p *Printer) Warning(msg string) {
 	fmt.Println(msg)
 }
 
@@ -55,14 +55,15 @@ var authCmd = &cobra.Command{
 		refreshToken := loginRes.GetRefreshToken()
 
 		st := storage.Load()
-		st.SetRefreshToken(username, refreshToken)
+		st.SetRefreshToken(refreshToken)
 
 		atPayload := &descAuth.GetAccessTokenRequest{RefreshToken: refreshToken}
 		atRes, err := authClient.GetAccessToken(ctx, atPayload)
 		if err != nil {
 			log.Fatalf("failed to get access token: %v", err)
 		}
-		st.SetAccessToken(username, atRes.GetAccessToken())
+		st.SetUsername(username)
+		st.SetAccessToken(atRes.GetAccessToken())
 		st.Flush()
 	},
 }

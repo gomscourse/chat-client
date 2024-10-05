@@ -9,8 +9,8 @@ import (
 )
 
 type Print interface {
-	Info(msg string, a ...interface{})
-	Warning(msg string, a ...interface{})
+	Info(msg string)
+	Warning(msg string)
 }
 
 // GetUserInput gets input from user terminal with retrying if input is empty.
@@ -45,5 +45,21 @@ func GetSensitiveUserInput(prompt string, prt Print) (string, error) {
 		} else {
 			return string(bytePassword), nil
 		}
+	}
+}
+
+// InfinityInput gets input from user terminal and passes it to the inputHandler func
+func InfinityInput(inputHandler func(input string), stopWord string) {
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == stopWord {
+			fmt.Println("exiting input process")
+			return
+		}
+
+		inputHandler(input)
 	}
 }

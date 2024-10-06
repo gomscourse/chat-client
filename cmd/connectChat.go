@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"io"
 	"log"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -47,7 +48,7 @@ var connectChatCmd = &cobra.Command{
 		readyCh := make(chan struct{})
 		go connectChat(ctx, client, chatID, st, readyCh)
 		<-readyCh
-		showMessages()
+		showMessages(ctx, client, chatID, st.GetUsername())
 		cli.InfinityInput(sendMessage(ctx, client, chatID), "cmd: exit")
 	},
 }
@@ -109,7 +110,7 @@ func printMessage(message *descChat.ChatMessage, username string) {
 
 	fmt.Printf(
 		"[%v] - [from: %s]: %s\n",
-		message.GetCreated().AsTime().Format(time.RFC3339),
+		message.GetCreated().AsTime().Format(time.DateTime),
 		author,
 		message.GetContent(),
 	)
@@ -147,13 +148,36 @@ func getChatClient() (descChat.ChatV1Client, func(), error) {
 	return descChat.NewChatV1Client(conn), func() { conn.Close() }, nil
 }
 
-func showMessages() {
+func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int64, username string) {
 	count := cli.GetUserInput(
 		"How many last messages from this chat you want to load?",
 		&Printer{},
 		input_validators.IsInt,
 	)
 	countInt, _ := strconv.Atoi(count)
-	//TODO: загрузить сообщения
-	fmt.Printf("shown %d messages", countInt)
+	if countInt == 0 {
+		return
+	}
+
+	response, err := client.GetChatMessages(
+		ctx, &descChat.GetChatMessagesRequest{
+			Id:       chatID,
+			Page:     1,
+			PageSize: int64(countInt),
+		},
+	)
+
+	if err != nil {
+		fmt.Println("failed to get chat messages")
+	}
+
+	slices.SortFunc(
+		response.Messages, func(a, b *descChat.ChatMessage) int {
+			return int(a.GetCreated().AsTime().Unix() - b.GetCreated().AsTime().Unix())
+		},
+	)
+
+	for _, msg := range response.Messages {
+		printMessage(msg, username)
+	}
 }

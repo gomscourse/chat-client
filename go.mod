@@ -3,6 +3,7 @@ module chat-cli
 go 1.22.5
 
 require (
+	github.com/fatih/color v1.17.0
 	github.com/gomscourse/auth v0.0.0-20241003173623-d58419f0fb0e
 	github.com/gomscourse/chat-server v0.0.0-20241003173757-b4c17e8256c2
 	github.com/pkg/errors v0.9.1
@@ -14,6 +15,8 @@ require (
 require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect

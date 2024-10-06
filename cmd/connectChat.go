@@ -4,6 +4,7 @@ import (
 	"chat-cli/internal/config"
 	"chat-cli/internal/input_validators"
 	"chat-cli/internal/lib/cli"
+	"chat-cli/internal/logger"
 	"chat-cli/internal/storage"
 	"context"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"io"
-	"log"
 	"slices"
 	"strconv"
 	"time"
@@ -28,7 +28,7 @@ var connectChatCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		chatID, err := cmd.Flags().GetInt64("id")
 		if err != nil {
-			log.Fatalf("failed to get chat ID: %s", err)
+			logger.ErrorWithExit("failed to get chat ID: %s", err)
 		}
 		st := storage.Load()
 		md := metadata.MD{
@@ -40,7 +40,7 @@ var connectChatCmd = &cobra.Command{
 
 		client, closFn, err := getChatClient()
 		if err != nil {
-			log.Fatalf("unable to connect to chat server")
+			logger.ErrorWithExit("unable to connect to chat server")
 		}
 
 		defer closFn()
@@ -81,8 +81,7 @@ func connectChat(
 		},
 	)
 	if err != nil {
-		log.Printf("failed to establish stream connection: %s\n", err)
-		return
+		logger.ErrorWithExit("failed to establish stream connection: %s\n", err)
 	}
 
 	readyCh <- struct{}{}
@@ -90,12 +89,10 @@ func connectChat(
 	for {
 		message, errRecv := stream.Recv()
 		if errRecv == io.EOF {
-			log.Printf("chat connection closed")
-			return
+			logger.ErrorWithExit("chat connection closed")
 		}
 		if errRecv != nil {
-			log.Printf("failed to receive message: %s\n", errRecv)
-			return
+			logger.ErrorWithExit("failed to receive message: %s\n", errRecv)
 		}
 
 		printMessage(message, st.GetUsername())
@@ -104,11 +101,13 @@ func connectChat(
 
 func printMessage(message *descChat.ChatMessage, username string) {
 	author := message.GetAuthor()
+	printer := logger.Simple
 	if author == username {
 		author = "you"
+		printer = logger.Info
 	}
 
-	fmt.Printf(
+	printer(
 		"[%v] - [from: %s]: %s\n",
 		message.GetCreated().AsTime().Format(time.DateTime),
 		author,
@@ -168,7 +167,7 @@ func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int6
 	)
 
 	if err != nil {
-		fmt.Println("failed to get chat messages")
+		logger.Warning("failed to get chat messages")
 	}
 
 	slices.SortFunc(

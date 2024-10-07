@@ -1,16 +1,14 @@
 package cmd
 
 import (
-	"chat-cli/internal/config"
 	"chat-cli/internal/input_validators"
 	"chat-cli/internal/lib/cli"
+	"chat-cli/internal/logger"
 	"chat-cli/internal/storage"
 	"context"
 	"fmt"
 	descAuth "github.com/gomscourse/auth/pkg/auth_v1"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 )
 
@@ -36,13 +34,13 @@ var authCmd = &cobra.Command{
 			log.Fatalf(fmt.Sprintf("Failed to read password: %s", err.Error()))
 		}
 
-		conn, err := grpc.Dial(config.AuthServiceAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		authClient, closer, err := getAuthClient()
 		if err != nil {
-			log.Fatalf("failed to connect to auth server: %v", err)
+			logger.ErrorWithExit(err.Error())
 		}
-		defer conn.Close()
 
-		authClient := descAuth.NewAuthV1Client(conn)
+		defer closer()
+
 		ctx := context.Background()
 		loginPayload := &descAuth.LoginRequest{
 			Username: username,
@@ -66,6 +64,8 @@ var authCmd = &cobra.Command{
 		st.SetUsername(username)
 		st.SetAccessToken(atRes.GetAccessToken())
 		st.Flush()
+
+		logger.Success("Successfully logged in as %s", username)
 	},
 }
 

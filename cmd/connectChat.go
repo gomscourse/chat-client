@@ -130,13 +130,14 @@ func sendMessage(ctx context.Context, client descChat.ChatV1Client, chatID int64
 
 func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int64, username string) {
 	count := cli.GetUserInput(
-		"How many last messages from this chat you want to load?",
+		"How many last messages from this chat you want to load (Empty for all)?",
 		&Printer{},
-		input_validators.IsInt,
+		input_validators.IsIntOrEmpty,
 	)
-	countInt, _ := strconv.Atoi(count)
-	if countInt == 0 {
-		return
+	countInt := 0
+	if count != "" {
+		ci, _ := strconv.Atoi(count)
+		countInt = ci
 	}
 
 	response, err := client.GetChatMessages(
@@ -149,6 +150,11 @@ func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int6
 
 	if err != nil {
 		logger.Warning("failed to get chat messages")
+	}
+
+	if len(response.Messages) == 0 {
+		logger.Warning("There are no messages yet")
+		return
 	}
 
 	slices.SortFunc(

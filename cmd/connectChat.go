@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"chat-cli/internal/config"
 	"chat-cli/internal/input_validators"
 	"chat-cli/internal/lib/cli"
 	"chat-cli/internal/logger"
@@ -9,11 +8,7 @@ import (
 	"context"
 	"fmt"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"io"
 	"slices"
 	"strconv"
@@ -31,12 +26,7 @@ var connectChatCmd = &cobra.Command{
 			logger.ErrorWithExit("failed to get chat ID: %s", err)
 		}
 		st := storage.Load()
-		md := metadata.MD{
-			"authorization": []string{st.GetAuthHeader()},
-		}
-
-		ctx := context.Background()
-		ctx = metadata.NewOutgoingContext(ctx, md)
+		ctx := getRequestContext(st)
 
 		client, closFn, err := getChatClient()
 		if err != nil {
@@ -136,15 +126,6 @@ func sendMessage(ctx context.Context, client descChat.ChatV1Client, chatID int64
 			}
 		}
 	}
-}
-
-func getChatClient() (descChat.ChatV1Client, func(), error) {
-	conn, err := grpc.Dial(config.ChatServiceAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, func() {}, errors.Wrap(err, "failed to connect to server")
-	}
-
-	return descChat.NewChatV1Client(conn), func() { conn.Close() }, nil
 }
 
 func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int64, username string) {

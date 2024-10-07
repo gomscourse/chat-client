@@ -7,6 +7,8 @@ github.com/gomscourse/auth v0.0.0-20241003173623-d58419f0fb0e h1:wr9kRWeUyXQnY+k
 github.com/gomscourse/auth v0.0.0-20241003173623-d58419f0fb0e/go.mod h1:H6EH53kz+MhSq5Dg9r41rGTkZYYoMWm55kDbmdqL5kI=
 github.com/gomscourse/chat-server v0.0.0-20241003173757-b4c17e8256c2 h1:h7omdFClS4nmlrzFh/WVHPTQvy3wrzvDRIZqDIFGMgE=
 github.com/gomscourse/chat-server v0.0.0-20241003173757-b4c17e8256c2/go.mod h1:ulhHXhx+YwWambPV1Js3tHyFwCgHOnYDMamUfAz24jI=
+github.com/gomscourse/chat-server v0.0.0-20241006133549-9677134860fc h1:tev+qK9D/hw5e+51ilF12lP5tNo+pav0ypji1tLPlHk=
+github.com/gomscourse/chat-server v0.0.0-20241006133549-9677134860fc/go.mod h1:ulhHXhx+YwWambPV1Js3tHyFwCgHOnYDMamUfAz24jI=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=

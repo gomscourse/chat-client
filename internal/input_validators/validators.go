@@ -18,3 +18,11 @@ func IsInt(input string) (bool, string) {
 
 	return true, ""
 }
+
+func IsIntOrEmpty(input string) (bool, string) {
+	if input == "" {
+		return true, ""
+	}
+
+	return IsInt(input)
+}

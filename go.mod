@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/fatih/color v1.17.0
 	github.com/gomscourse/auth v0.0.0-20241003173623-d58419f0fb0e
-	github.com/gomscourse/chat-server v0.0.0-20241003173757-b4c17e8256c2
+	github.com/gomscourse/chat-server v0.0.0-20241006133549-9677134860fc
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.1
 	golang.org/x/term v0.25.0

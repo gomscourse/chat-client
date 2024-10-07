@@ -15,7 +15,7 @@ require (
 require (
 	github.com/envoyproxy/protoc-gen-validate v1.0.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/gomscourse/common v1.0.7 // indirect
+	github.com/gomscourse/common v1.0.8 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

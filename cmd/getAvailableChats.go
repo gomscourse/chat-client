@@ -5,8 +5,11 @@ import (
 	"chat-cli/internal/lib/cli"
 	"chat-cli/internal/logger"
 	"chat-cli/internal/storage"
+	"context"
 	"fmt"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
+	"github.com/gomscourse/common/pkg/sys/messages"
+	"github.com/pkg/errors"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -39,15 +42,18 @@ var getAvailableChatsCmd = &cobra.Command{
 			countInt = ci
 		}
 
-		response, err := client.GetAvailableChats(
-			ctx, &descChat.GetAvailableChatsRequest{
-				Page:     1,
-				PageSize: int64(countInt),
-			},
-		)
+		response, err := getChats(ctx, client, countInt)
 		if err != nil {
-			logger.Error("failed to get available chats: %s", err)
-			return
+			var se GRPCStatusInterface
+			if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
+				refreshAccessToken(ctx, st)
+				response, err = getChats(getRequestContext(st), client, countInt)
+				if err != nil {
+					logger.ErrorWithExit("failed to get available chats: %s", err)
+				}
+			} else {
+				logger.ErrorWithExit("failed to get available chats: %s", err)
+			}
 		}
 
 		if len(response.Chats) == 0 {
@@ -71,6 +77,18 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// getAvailableChatsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func getChats(ctx context.Context, client descChat.ChatV1Client, count int) (
+	*descChat.GetAvailableChatsResponse,
+	error,
+) {
+	return client.GetAvailableChats(
+		ctx, &descChat.GetAvailableChatsRequest{
+			Page:     1,
+			PageSize: int64(count),
+		},
+	)
 }
 
 func printAvailableChats(chats []*descChat.Chat) {

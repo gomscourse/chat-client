@@ -5,8 +5,11 @@ import (
 	"chat-cli/internal/lib/cli"
 	"chat-cli/internal/logger"
 	"chat-cli/internal/storage"
+	"context"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
+	"github.com/gomscourse/common/pkg/sys/messages"
 	"github.com/gomscourse/common/pkg/tools"
+	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,7 +22,8 @@ var createChatCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		st := storage.Load()
-		ctx := getRequestContext(st)
+		ctx := context.Background()
+		ctx = getRequestContext(ctx, st)
 
 		client, closFn, err := getChatClient()
 		if err != nil {
@@ -55,7 +59,26 @@ var createChatCmd = &cobra.Command{
 		)
 
 		if err != nil {
-			logger.ErrorWithExit("failed to create chat: %s", err.Error())
+			var se GRPCStatusInterface
+			if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
+				refreshAccessToken(ctx, st)
+				ctx = getRequestContext(ctx, st)
+				res, err = client.Create(
+					ctx, &descChat.CreateRequest{
+						Title: title,
+						Usernames: tools.MapSlice(
+							usernamesSlice, func(u string) string {
+								return strings.TrimSpace(u)
+							},
+						),
+					},
+				)
+				if err != nil {
+					logger.ErrorWithExit("failed to create chat: %s", err.Error())
+				}
+			} else {
+				logger.ErrorWithExit("failed to create chat: %s", err.Error())
+			}
 		}
 
 		logger.Success("Created chat with id %d", res.Id)

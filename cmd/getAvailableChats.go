@@ -29,7 +29,8 @@ var getAvailableChatsCmd = &cobra.Command{
 		defer closFn()
 
 		st := storage.Load()
-		ctx := getRequestContext(st)
+		ctx := context.Background()
+		ctx = getRequestContext(ctx, st)
 
 		count := cli.GetUserInput(
 			"How many chats you want to load (empty to load all)?",
@@ -47,7 +48,8 @@ var getAvailableChatsCmd = &cobra.Command{
 			var se GRPCStatusInterface
 			if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
 				refreshAccessToken(ctx, st)
-				response, err = getChats(getRequestContext(st), client, countInt)
+				ctx = getRequestContext(ctx, st)
+				response, err = getChats(ctx, client, countInt)
 				if err != nil {
 					logger.ErrorWithExit("failed to get available chats: %s", err)
 				}

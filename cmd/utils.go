@@ -54,12 +54,11 @@ func getUserClient() (descUser.UserV1Client, func(), error) {
 	return descUser.NewUserV1Client(conn), func() { conn.Close() }, nil
 }
 
-func getRequestContext(st *storage.Storage) context.Context {
+func getRequestContext(ctx context.Context, st *storage.Storage) context.Context {
 	md := metadata.MD{
 		"authorization": []string{st.GetAuthHeader()},
 	}
 
-	ctx := context.Background()
 	return metadata.NewOutgoingContext(ctx, md)
 }
 

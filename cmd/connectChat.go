@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
+	"github.com/gomscourse/common/pkg/sys/messages"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
 	"slices"
@@ -26,7 +28,8 @@ var connectChatCmd = &cobra.Command{
 			logger.ErrorWithExit("failed to get chat ID: %s", err)
 		}
 		st := storage.Load()
-		ctx := getRequestContext(st)
+		ctx := context.Background()
+		ctx = getRequestContext(ctx, st)
 
 		client, closFn, err := getChatClient()
 		if err != nil {
@@ -38,8 +41,8 @@ var connectChatCmd = &cobra.Command{
 		readyCh := make(chan struct{})
 		go connectChat(ctx, client, chatID, st, readyCh)
 		<-readyCh
-		showMessages(ctx, client, chatID, st.GetUsername())
-		cli.InfinityInput(sendMessage(ctx, client, chatID), "cmd: exit")
+		showMessages(ctx, client, chatID, st)
+		cli.InfinityInput(sendMessage(ctx, client, chatID, st), "cmd: exit")
 	},
 }
 
@@ -82,7 +85,25 @@ func connectChat(
 			logger.ErrorWithExit("chat connection closed")
 		}
 		if errRecv != nil {
-			logger.ErrorWithExit("failed to receive message: %s\n", errRecv)
+			var se GRPCStatusInterface
+			if errors.As(errRecv, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
+				refreshAccessToken(ctx, st)
+				ctx = getRequestContext(ctx, st)
+				stream, err = client.ConnectChat(
+					ctx, &descChat.ConnectChatRequest{
+						ChatId: chatID,
+					},
+				)
+				if err != nil {
+					logger.ErrorWithExit("failed to reestablish stream connection")
+				}
+				message, errRecv = stream.Recv()
+				if errRecv != nil {
+					logger.ErrorWithExit("failed to receive message: %s", err)
+				}
+			} else {
+				logger.ErrorWithExit("failed to receive message: %s\n", errRecv)
+			}
 		}
 
 		printMessage(message, st.GetUsername())
@@ -93,7 +114,6 @@ func printMessage(message *descChat.ChatMessage, username string) {
 	author := message.GetAuthor()
 	printer := logger.Simple
 	if author == username {
-		author = "you"
 		printer = logger.Info
 	}
 
@@ -105,7 +125,12 @@ func printMessage(message *descChat.ChatMessage, username string) {
 	)
 }
 
-func sendMessage(ctx context.Context, client descChat.ChatV1Client, chatID int64) func(msg string) {
+func sendMessage(
+	ctx context.Context,
+	client descChat.ChatV1Client,
+	chatID int64,
+	st *storage.Storage,
+) func(msg string) {
 	return func(msg string) {
 		switch msg {
 		case "cmd: some":
@@ -122,13 +147,28 @@ func sendMessage(ctx context.Context, client descChat.ChatV1Client, chatID int64
 			)
 
 			if err != nil {
-				fmt.Printf("failed to send message: %s\n", err)
+				var se GRPCStatusInterface
+				if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
+					refreshAccessToken(ctx, st)
+					ctx = getRequestContext(ctx, st)
+					_, err = client.SendMessage(
+						ctx, &descChat.SendMessageRequest{
+							ChatID: chatID,
+							Text:   msg,
+						},
+					)
+					if err != nil {
+						logger.ErrorWithExit("failed to send message: %s", err)
+					}
+				} else {
+					logger.ErrorWithExit("failed to send message: %s", err)
+				}
 			}
 		}
 	}
 }
 
-func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int64, username string) {
+func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int64, st *storage.Storage) {
 	count := cli.GetUserInput(
 		"How many last messages from this chat you want to load (Empty for all)?",
 		&Printer{},
@@ -141,7 +181,7 @@ func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int6
 	}
 
 	response, err := client.GetChatMessages(
-		ctx, &descChat.GetChatMessagesRequest{
+		getRequestContext(ctx, st), &descChat.GetChatMessagesRequest{
 			Id:       chatID,
 			Page:     1,
 			PageSize: int64(countInt),
@@ -150,6 +190,7 @@ func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int6
 
 	if err != nil {
 		logger.Warning("failed to get chat messages")
+		return
 	}
 
 	if len(response.Messages) == 0 {
@@ -164,6 +205,6 @@ func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int6
 	)
 
 	for _, msg := range response.Messages {
-		printMessage(msg, username)
+		printMessage(msg, st.GetUsername())
 	}
 }

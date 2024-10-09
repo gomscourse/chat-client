@@ -7,9 +7,7 @@ import (
 	"chat-cli/internal/storage"
 	"context"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
-	"github.com/gomscourse/common/pkg/sys/messages"
 	"github.com/gomscourse/common/pkg/tools"
-	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -45,49 +43,39 @@ var createChatCmd = &cobra.Command{
 			input_validators.NotEmpty,
 		)
 
-		usernamesSlice := strings.Split(usernames, ",")
-
-		res, err := client.Create(
-			ctx, &descChat.CreateRequest{
-				Title: title,
-				Usernames: tools.MapSlice(
-					usernamesSlice, func(u string) string {
-						return strings.TrimSpace(u)
-					},
-				),
+		usernamesSlice := tools.MapSlice(
+			strings.Split(usernames, ","), func(u string) string {
+				return strings.TrimSpace(u)
 			},
 		)
 
+		res, err := sendCreateChatRequest(ctx, client, title, usernamesSlice)
+
 		if err != nil {
-			var se GRPCStatusInterface
-			if errors.As(err, &se) {
-				errMessage := se.GRPCStatus().Message()
-				if errMessage == messages.AccessTokenInvalid {
-					refreshAccessToken(ctx, st)
-					ctx = getRequestContext(ctx, st)
-					res, err = client.Create(
-						ctx, &descChat.CreateRequest{
-							Title: title,
-							Usernames: tools.MapSlice(
-								usernamesSlice, func(u string) string {
-									return strings.TrimSpace(u)
-								},
-							),
-						},
-					)
-					if err != nil {
-						logger.ErrorWithExit("failed to create chat: %s", errMessage)
-					}
-				} else {
-					logger.ErrorWithExit("failed to create chat: %s", errMessage)
-				}
-			} else {
-				logger.ErrorWithExit("failed to create chat: %s", err.Error())
-			}
+			handleError(
+				ctx, err, st, res, "failed to create chat",
+				func(ctx context.Context) (*descChat.CreateResponse, error) {
+					return sendCreateChatRequest(ctx, client, title, usernamesSlice)
+				},
+			)
 		}
 
 		logger.Success("Created chat with id %d", res.Id)
 	},
+}
+
+func sendCreateChatRequest(
+	ctx context.Context,
+	client descChat.ChatV1Client,
+	title string,
+	usernames []string,
+) (*descChat.CreateResponse, error) {
+	return client.Create(
+		ctx, &descChat.CreateRequest{
+			Title:     title,
+			Usernames: usernames,
+		},
+	)
 }
 
 func init() {

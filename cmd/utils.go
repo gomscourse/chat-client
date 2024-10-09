@@ -99,3 +99,32 @@ func requestAccessToken(
 		},
 	)
 }
+
+func handleError[T any](
+	ctx context.Context,
+	err error,
+	st *storage.Storage,
+	res *T,
+	baseErrMsg string,
+	retryFn func(ctx context.Context) (*T, error),
+) {
+	var se GRPCStatusInterface
+	if errors.As(err, &se) {
+		errMessage := se.GRPCStatus().Message()
+		if errMessage == messages.AccessTokenInvalid {
+			refreshAccessToken(ctx, st)
+			ctx = getRequestContext(ctx, st)
+			res, err = retryFn(ctx)
+			if err != nil {
+				if errors.As(err, &se) {
+					logger.ErrorWithExit("%s: %s", baseErrMsg, se.GRPCStatus().Message())
+				}
+				logger.ErrorWithExit("%s: %s", baseErrMsg, err)
+			}
+		} else {
+			logger.ErrorWithExit("%s: %s", baseErrMsg, errMessage)
+		}
+	} else {
+		logger.ErrorWithExit("%s: %s", baseErrMsg, err)
+	}
+}

@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
-	"github.com/gomscourse/common/pkg/sys/messages"
-	"github.com/pkg/errors"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -43,19 +41,18 @@ var getAvailableChatsCmd = &cobra.Command{
 			countInt = ci
 		}
 
-		response, err := getChats(ctx, client, countInt)
+		response, err := sendGetChatsRequest(ctx, client, countInt)
 		if err != nil {
-			var se GRPCStatusInterface
-			if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
-				refreshAccessToken(ctx, st)
-				ctx = getRequestContext(ctx, st)
-				response, err = getChats(ctx, client, countInt)
-				if err != nil {
-					logger.ErrorWithExit("failed to get available chats: %s", err)
-				}
-			} else {
-				logger.ErrorWithExit("failed to get available chats: %s", err)
-			}
+			handleError(
+				ctx, err, st, response, "failed to get available chats",
+				func(ctx context.Context) (*descChat.GetAvailableChatsResponse, error) {
+					return sendGetChatsRequest(ctx, client, countInt)
+				},
+			)
+		}
+
+		if response == nil {
+			logger.ErrorWithExit("Failed to get response. Please try again")
 		}
 
 		if len(response.Chats) == 0 {
@@ -81,7 +78,7 @@ func init() {
 	// getAvailableChatsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func getChats(ctx context.Context, client descChat.ChatV1Client, count int) (
+func sendGetChatsRequest(ctx context.Context, client descChat.ChatV1Client, count int) (
 	*descChat.GetAvailableChatsResponse,
 	error,
 ) {

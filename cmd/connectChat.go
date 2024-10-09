@@ -11,6 +11,7 @@ import (
 	"github.com/gomscourse/common/pkg/sys/messages"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
 	"slices"
 	"strconv"
@@ -139,38 +140,29 @@ func sendMessage(
 			fmt.Print("\033[1A")
 			fmt.Print("\033[K")
 
-			_, err := client.SendMessage(
-				ctx, &descChat.SendMessageRequest{
-					ChatID: chatID,
-					Text:   msg,
-				},
-			)
+			res, err := sendMessageRequest(ctx, client, chatID, msg)
 
 			if err != nil {
-				var se GRPCStatusInterface
-				if errors.As(err, &se) {
-					errMessage := se.GRPCStatus().Message()
-					if errMessage == messages.AccessTokenInvalid {
-						refreshAccessToken(ctx, st)
-						ctx = getRequestContext(ctx, st)
-						_, err = client.SendMessage(
-							ctx, &descChat.SendMessageRequest{
-								ChatID: chatID,
-								Text:   msg,
-							},
-						)
-						if err != nil {
-							logger.ErrorWithExit("failed to send message: %s", errMessage)
-						}
-					} else {
-						logger.ErrorWithExit("failed to send message: %s", errMessage)
-					}
-				} else {
-					logger.ErrorWithExit("failed to send message: %s", err)
-				}
+				handleError(
+					ctx, err, st, res, "failed to send message", func(ctx context.Context) (*emptypb.Empty, error) {
+						return sendMessageRequest(ctx, client, chatID, msg)
+					},
+				)
 			}
 		}
 	}
+}
+
+func sendMessageRequest(ctx context.Context, client descChat.ChatV1Client, chatID int64, msg string) (
+	*emptypb.Empty,
+	error,
+) {
+	return client.SendMessage(
+		ctx, &descChat.SendMessageRequest{
+			ChatID: chatID,
+			Text:   msg,
+		},
+	)
 }
 
 func showMessages(ctx context.Context, client descChat.ChatV1Client, chatID int64, st *storage.Storage) {

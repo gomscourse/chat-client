@@ -148,17 +148,22 @@ func sendMessage(
 
 			if err != nil {
 				var se GRPCStatusInterface
-				if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
-					refreshAccessToken(ctx, st)
-					ctx = getRequestContext(ctx, st)
-					_, err = client.SendMessage(
-						ctx, &descChat.SendMessageRequest{
-							ChatID: chatID,
-							Text:   msg,
-						},
-					)
-					if err != nil {
-						logger.ErrorWithExit("failed to send message: %s", err)
+				if errors.As(err, &se) {
+					errMessage := se.GRPCStatus().Message()
+					if errMessage == messages.AccessTokenInvalid {
+						refreshAccessToken(ctx, st)
+						ctx = getRequestContext(ctx, st)
+						_, err = client.SendMessage(
+							ctx, &descChat.SendMessageRequest{
+								ChatID: chatID,
+								Text:   msg,
+							},
+						)
+						if err != nil {
+							logger.ErrorWithExit("failed to send message: %s", errMessage)
+						}
+					} else {
+						logger.ErrorWithExit("failed to send message: %s", errMessage)
 					}
 				} else {
 					logger.ErrorWithExit("failed to send message: %s", err)

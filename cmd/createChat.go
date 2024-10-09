@@ -60,21 +60,26 @@ var createChatCmd = &cobra.Command{
 
 		if err != nil {
 			var se GRPCStatusInterface
-			if errors.As(err, &se) && se.GRPCStatus().Message() == messages.AccessTokenInvalid {
-				refreshAccessToken(ctx, st)
-				ctx = getRequestContext(ctx, st)
-				res, err = client.Create(
-					ctx, &descChat.CreateRequest{
-						Title: title,
-						Usernames: tools.MapSlice(
-							usernamesSlice, func(u string) string {
-								return strings.TrimSpace(u)
-							},
-						),
-					},
-				)
-				if err != nil {
-					logger.ErrorWithExit("failed to create chat: %s", err.Error())
+			if errors.As(err, &se) {
+				errMessage := se.GRPCStatus().Message()
+				if errMessage == messages.AccessTokenInvalid {
+					refreshAccessToken(ctx, st)
+					ctx = getRequestContext(ctx, st)
+					res, err = client.Create(
+						ctx, &descChat.CreateRequest{
+							Title: title,
+							Usernames: tools.MapSlice(
+								usernamesSlice, func(u string) string {
+									return strings.TrimSpace(u)
+								},
+							),
+						},
+					)
+					if err != nil {
+						logger.ErrorWithExit("failed to create chat: %s", errMessage)
+					}
+				} else {
+					logger.ErrorWithExit("failed to create chat: %s", errMessage)
 				}
 			} else {
 				logger.ErrorWithExit("failed to create chat: %s", err.Error())

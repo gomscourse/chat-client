@@ -31,7 +31,7 @@ var getAvailableChatsCmd = &cobra.Command{
 		ctx = getRequestContext(ctx, st)
 
 		count := cli.GetUserInput(
-			"How many chats you want to load (empty to load all)?",
+			"How many chats do you want to load (empty to load all)?",
 			&Printer{},
 			input_validators.IsIntOrEmpty,
 		)

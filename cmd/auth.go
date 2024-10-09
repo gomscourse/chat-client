@@ -49,7 +49,7 @@ var authCmd = &cobra.Command{
 
 		loginRes, err := authClient.Login(ctx, loginPayload)
 		if err != nil {
-			log.Fatalf("failed to get refresh token: %v", err)
+			handleError(err, "failed to log in")
 		}
 		refreshToken := loginRes.GetRefreshToken()
 
@@ -59,7 +59,7 @@ var authCmd = &cobra.Command{
 		atPayload := &descAuth.GetAccessTokenRequest{RefreshToken: refreshToken}
 		atRes, err := authClient.GetAccessToken(ctx, atPayload)
 		if err != nil {
-			log.Fatalf("failed to get access token: %v", err)
+			handleError(err, "failed to get access token")
 		}
 		st.SetUsername(username)
 		st.SetAccessToken(atRes.GetAccessToken())

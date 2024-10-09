@@ -43,7 +43,7 @@ var getAvailableChatsCmd = &cobra.Command{
 
 		response, err := sendGetChatsRequest(ctx, client, countInt)
 		if err != nil {
-			handleError(
+			handleUnauthenticatedError(
 				ctx, err, st, response, "failed to get available chats",
 				func(ctx context.Context) (*descChat.GetAvailableChatsResponse, error) {
 					return sendGetChatsRequest(ctx, client, countInt)

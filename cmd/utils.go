@@ -5,6 +5,9 @@ import (
 	"chat-cli/internal/logger"
 	"chat-cli/internal/storage"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	_ "embed"
 	descAuth "github.com/gomscourse/auth/pkg/auth_v1"
 	descUser "github.com/gomscourse/auth/pkg/user_v1"
 	descChat "github.com/gomscourse/chat-server/pkg/chat_v1"
@@ -27,15 +30,23 @@ func getChatClient() (descChat.ChatV1Client, func(), error) {
 	return descChat.NewChatV1Client(conn), func() { conn.Close() }, nil
 }
 
+//go:embed cert/cert.pem
+var certData []byte
+
 func getAuthClient() (descAuth.AuthV1Client, func(), error) {
-	creds, err := credentials.NewClientTLSFromFile("service.pem", "")
-	if err != nil {
-		log.Fatalf("could not process the credentials: %v", err)
+	certPool := x509.NewCertPool()
+
+	if !certPool.AppendCertsFromPEM(certData) {
+		log.Fatal("could not process the credentials")
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs: certPool,
 	}
 
 	conn, err := grpc.Dial(
 		config.AuthServiceAddress,
-		grpc.WithTransportCredentials(creds),
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
 	)
 
 	if err != nil {
@@ -100,7 +111,7 @@ func requestAccessToken(
 	)
 }
 
-func handleError[T any](
+func handleUnauthenticatedError[T any](
 	ctx context.Context,
 	err error,
 	st *storage.Storage,
@@ -124,6 +135,15 @@ func handleError[T any](
 		} else {
 			logger.ErrorWithExit("%s: %s", baseErrMsg, errMessage)
 		}
+	} else {
+		logger.ErrorWithExit("%s: %s", baseErrMsg, err)
+	}
+}
+
+func handleError(err error, baseErrMsg string) {
+	var se GRPCStatusInterface
+	if errors.As(err, &se) {
+		logger.ErrorWithExit("%s: %s", baseErrMsg, se.GRPCStatus().Message())
 	} else {
 		logger.ErrorWithExit("%s: %s", baseErrMsg, err)
 	}

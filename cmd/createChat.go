@@ -52,7 +52,7 @@ var createChatCmd = &cobra.Command{
 		res, err := sendCreateChatRequest(ctx, client, title, usernamesSlice)
 
 		if err != nil {
-			handleError(
+			handleUnauthenticatedError(
 				ctx, err, st, res, "failed to create chat",
 				func(ctx context.Context) (*descChat.CreateResponse, error) {
 					return sendCreateChatRequest(ctx, client, title, usernamesSlice)

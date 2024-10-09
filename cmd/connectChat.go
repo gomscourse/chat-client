@@ -143,7 +143,7 @@ func sendMessage(
 			res, err := sendMessageRequest(ctx, client, chatID, msg)
 
 			if err != nil {
-				handleError(
+				handleUnauthenticatedError(
 					ctx, err, st, res, "failed to send message", func(ctx context.Context) (*emptypb.Empty, error) {
 						return sendMessageRequest(ctx, client, chatID, msg)
 					},

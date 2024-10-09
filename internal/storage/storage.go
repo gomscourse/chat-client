@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"chat-cli/internal/logger"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -29,12 +30,12 @@ func Load() *Storage {
 
 		return storage
 	} else if err != nil {
-		log.Fatalf("failed to init storage: %s", err)
+		logger.ErrorWithExit("failed to init storage: %s", err)
 	}
 
 	err = json.Unmarshal(data, &storage)
 	if err != nil {
-		log.Fatalf("failed to load storage: %s", err)
+		logger.ErrorWithExit("failed to load storage: %s", err)
 	}
 
 	return storage
@@ -75,11 +76,11 @@ func (s *Storage) GetUsername() string {
 func (s *Storage) Flush() {
 	data, err := json.Marshal(s)
 	if err != nil {
-		log.Fatalf("failed to encode storage data: %s", err)
+		logger.ErrorWithExit("failed to encode storage data: %s", err)
 	}
 
 	err = os.WriteFile(chatStoragePath, data, 0644)
 	if err != nil {
-		log.Fatalf("failed to write to storage file: %s", err)
+		logger.ErrorWithExit("failed to write to storage file: %s", err)
 	}
 }

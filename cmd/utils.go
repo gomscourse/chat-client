@@ -127,10 +127,7 @@ func handleUnauthenticatedError[T any](
 			ctx = getRequestContext(ctx, st)
 			res, err = retryFn(ctx)
 			if err != nil {
-				if errors.As(err, &se) {
-					logger.ErrorWithExit("%s: %s", baseErrMsg, se.GRPCStatus().Message())
-				}
-				logger.ErrorWithExit("%s: %s", baseErrMsg, err)
+				handleError(err, baseErrMsg)
 			}
 		} else {
 			logger.ErrorWithExit("%s: %s", baseErrMsg, errMessage)
@@ -144,7 +141,7 @@ func handleError(err error, baseErrMsg string) {
 	var se GRPCStatusInterface
 	if errors.As(err, &se) {
 		logger.ErrorWithExit("%s: %s", baseErrMsg, se.GRPCStatus().Message())
-	} else {
-		logger.ErrorWithExit("%s: %s", baseErrMsg, err)
 	}
+
+	logger.ErrorWithExit("%s: %s", baseErrMsg, err)
 }

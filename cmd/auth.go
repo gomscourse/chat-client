@@ -9,7 +9,6 @@ import (
 	"fmt"
 	descAuth "github.com/gomscourse/auth/pkg/auth_v1"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 type Printer struct{}
@@ -31,7 +30,7 @@ var authCmd = &cobra.Command{
 		username := cli.GetUserInput("Username: ", printer, input_validators.NotEmpty)
 		password, err := cli.GetSensitiveUserInput("Password", printer)
 		if err != nil {
-			log.Fatalf(fmt.Sprintf("Failed to read password: %s", err.Error()))
+			logger.ErrorWithExit("Failed to read password: %s", err)
 		}
 
 		authClient, closer, err := getAuthClient()
